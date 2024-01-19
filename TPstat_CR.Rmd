@@ -235,6 +235,7 @@ par(mfrow=c(1,2)) # 2 graphiques sur 1 ligne
 matplot(seqn, temps, xlab='n', ylab='temps')
 matplot(seqn, log(temps)^2, xlab='n', ylab=expression(log(temps)^2))
 ```
+
 ```{r, echo=TRUE}
 set.seed(35)
 vect_temps <- log(as.vector(temps))^2
@@ -252,7 +253,20 @@ Ici, la p-valeur de l'hypothèse b=0 (ligne vect_dim) est extrêmement inférieu
 
 ### Etude des résidus
 #### Test de normalité
+
+```{r}
+shapiro.test(residuals(temps.lm))
+```
+On obtient une pvalue = 0.37 > 5%. Les résidus suivent donc une loi normale
 ##### Etude graphique
+```{r}
+par(mfrow=c(1,2)) # 4 graphiques sur 2 lignes et 2 colonnes
+plot(temps.lm)
+```
+Résiduals vs Fitted : la courbe n'est ni horizontale ni homogène. 
+Normal Q-Q : L'ensemble des points sont sur la diagonale avec quelques exceptions (points 135 et 46). On peut en désuire que les résidus suivent une loi normale  
+Scale location : courbe moins concave que Résiduals vs Fitted mais toujour pas horizontale
+Residuals vs Leverage : les points sont éloignés de la distance de Cook = 1
 
 ##### Tests
 
@@ -269,19 +283,35 @@ Ici, la p-valeur de l'hypothèse b=0 (ligne vect_dim) est extrêmement inférieu
 #### Test d'indépendance
 ##### Etude graphique
 
-##### Tests
-
 ## 2.2. Comportement par rapport au nombre de sommets : étude du comportement moyen
 
 Récupération du temps moyen.
 
 Ajustement du modèle linéaire de $\log(temps.moy)^2$ en fonction de $n$.
+```{r}
+temps.moy <- rowMeans(temps)
+matplot(seqn, log(temps.moy)^2, xlab='n', ylab=expression(log(temps.moy)^2))
+```
+
 
 Analyse de la validité du modèle :
 
 -   pertinence des coefficients et du modèle,
-
+```{r}
+vect_moy <- log(as.vector(temps.moy))^2
+vect_dim_moy <- rep(seqn)
+temps.moy.lm <- lm(vect_dim_moy ~ vect_moy)
+summary(temps.moy.lm)
+```
 -   étude des hypothèses sur les résidus.
+```{r}
+par(mfrow=c(1,2)) # 4 graphiques sur 2 lignes et 2 colonnes
+plot(temps.moy.lm)
+```
+
+```{r}
+shapiro.test(residuals(temps.moy.lm))
+```
 
 ## 2.3. Comportement par rapport à la structure du graphe
 
