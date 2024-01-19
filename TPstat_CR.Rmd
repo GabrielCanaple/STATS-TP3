@@ -1,0 +1,313 @@
+---
+title: "TP Statistique"
+author: "Gabriel Canaple"
+date: "19 Janvier 2024"
+output: pdf_document
+editor_options: 
+  markdown: 
+    wrap: 80
+---
+
+(décrire la régression, l'état des résidus, le test de normalité, est-elle
+centrée, variance est constante ? indépendance ?) test de shapiro, student, chi2
+régression linéaire = chap 6 du cours y = ax + b + epsilon y = variable
+expliquée a, b = inconnues x = variable explicative epsilon = résidus test de
+pertinence : a=0? test de biais : b=0?
+
+on peut aussi avoir plusieurs variables explicatives : y = a1*x1 + a2*x2 + ... +
+an\*xn + epsilon
+
+PENSER A définir le risque alpha pour chacun des tests (si on sait pas quoi
+prendre prendre 5%)
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+## il est possible qu'avant d'installer le package TSPpackage vous deviez installer ou ré-installer Rcpp
+#install.packages('Rcpp')
+
+# install.packages('./TSPpackage_1.0.tar.gz',repos=NULL,type='bin') ## pour linux
+# install.packages('./TSPpackage_1.0.zip',repos=NULL,type='bin')    ## pour windows
+## je ne peux pas fournir de package pour mac...
+
+## Appels aux packages, après les avoir installés !
+library(sp)
+library(maps)
+library(microbenchmark)
+library(TSP)
+library(TSPpackage)
+set.seed(35)
+```
+
+Voici le plan de ce qui sera fait dans le TP.
+
+# 0. Visualisation de chemins
+
+Lecture du fichier des villes :
+
+```{r, echo=TRUE}
+set.seed(35)
+villes <- read.csv('DonneesGPSvilles.csv',header=TRUE,dec='.',sep=';',quote="\"")
+str(villes)
+```
+
+Représentation des chemins par plus proches voisins et du chemin optimal :
+
+```{r, echo=TRUE}
+set.seed(35)
+coord <- cbind(villes$longitude,villes$latitude)
+dist <- distanceGPS(coord)
+voisins <- TSPnearest(dist)
+
+pathOpt <- c(1,8,9,4,21,13,7,10,3,17,16,20,6,19,15,18,11,5,22,14,12,2)
+
+par(mfrow=c(1,2),mar=c(1,1,2,1))
+plotTrace(coord[voisins$chemin,], title='Plus proches voisins')
+plotTrace(coord[pathOpt,], title='Chemin optimal')
+```
+
+Les longueurs des trajets (à vol d'oiseau) valent respectivement, pour la
+méthode des plus proches voisins :
+
+```{r, echo=FALSE}
+set.seed(35)
+voisins$longueur
+```
+
+et pour la méthode optimale :
+
+```{r, echo=FALSE}
+set.seed(35)
+calculeLongueur(dist,pathOpt)
+```
+
+Ceci illustre bien l'intérêt d'un algorithme de voyageur de commerce. Nous
+allons dans la suite étudier les performances de cet algorithme.
+
+# 1. Comparaison d'algorithmes
+
+Nombre de sommets fixes et graphes "identiques".
+
+```{r, echo=TRUE}
+set.seed(35)
+n <- 10 #nombre de noeud
+
+#example de lancement unitaire
+sommets <- data.frame(x = runif(n), y = runif(n))
+couts <- distance(sommets)
+TSPsolve(dist,'nearest')
+```
+
+```{r, echo=TRUE}
+set.seed(35)
+
+#calcul de plusieurs simulation de graphes qui seront analysées par les 5 méthodes
+nsimu <- 50 #nombre de simu
+methods <- c('arbitrary_insertion', 'repetitive_nn','two_opt','nearest','branch')
+res <- array(0,dim=c(nsimu,length(methods)))
+for(i in 1:nsimu){
+  points <- data.frame(x = runif(n), y = runif(n))
+  dist <- distance(points)
+  res[i,] <- (sapply(methods, function(m){TSPsolve(dist,m)}))
+}
+colnames(res) <- c('insertion','repet_nn','two_opt','nearest','branch')
+res
+```
+
+## 1.1. Longueur des chemins
+
+Comparaison des longueurs de différentes méthodes :
+
+-   boxplots
+
+-   test entre 'nearest' et 'branch'
+
+-   tests 2 à 2
+
+```{r, echo=TRUE}
+set.seed(35)
+res2 <- as.vector(res)
+meth_names <- c('insertion','repetitive_nn','two_opt','nearest','branch')
+methods2 <- rep(meth_names,each=nsimu) 
+
+boxplot(res)
+
+shapiro.test(res[,1])
+shapiro.test(res[,2])
+shapiro.test(res[,3])
+shapiro.test(res[,4])
+shapiro.test(res[,5])
+
+nearest_branch <- res[,4] - res[,5]
+shapiro.test(nearest_branch) #ne suit pas une loi normale
+t.test(res[,4], res[,5], alternative = "greater")
+
+result <- pairwise.t.test(res2,methods2, p.adjust.method = "bonferroni")
+```
+
+### Analyse des boxplots
+On observe qu'il n'y a pas de différence significative entre les algorithmes. Ils ont une moyenne proche, même si on remarque two_opt et nearest ont des valeurs globalement plus élevées que les trois autres, qui sont, eux, plus proches de 3.0 en valeur.
+two_opt se distingue aussi par une disperion plus faible que celle des quatre autres.
+
+### Test de normalité
+Avec un seuil de 5%, on ne rejette pas l'hypothèse nulle pour les tests de Shapiro-Wilk (qui est que la distribution suit une loi normale), donc les distributions pour nearest et branch suivent une loi normale.
+
+### Comparaison de nearest et de branch and bound
+Nous effectuons une soustraction afin de limiter l'incertitude. Nous pouvons le faire car nos deux algorithmes ont été exécutés sur des échantillons appariés.
+Nous prenons comme risque $\alpha$ le seuil à 5%.
+La p-valeur obtenue pour l'hypothèse que la différence est inférieure à 0 est égale à 0.008\%, nous rejetons donc l'hypothèse H0, et nous pouvons donc en conclure que la différence est significativement supérieure à 0. La p-valeur étant très inférieure à notre risque, nous pouvons être assez confiants dans notre conclusion.
+
+### Test deux à deux
+Nous prenons un risque $\alpha$ égal à 5%.
+La seule différence notable est entre nearest et branch, avec une p-valeur inférieure à 5%.
+Nous avons choisi de répartir les algorithmes entre 4 groupes :
+- Le premier groupe est composé d'insertion, et de repetitive-nn.
+- Le deuxième groupe se constitue de nearest.
+- Le troisième groupe contient two-opt.
+- Le quatrième groupe contient branch and bound
+La philosophie de cette répartition est de rassembler les algorithmes similaires entre eux, et ayant des différences avec les même algorithmes. A compléter.
+
+## 1.2. Temps de calcul
+
+Comparaison des temps à l'aide du package microbenchmark.
+
+Exemple d'application de microbenchmark :
+
+```{r, echo=TRUE}
+set.seed(35)
+microbenchmark(sqrt(x),x^0.5, times=100, setup={x <- runif(1)})
+```
+
+Exemple d'application de la fonction TSPsolve :
+
+```{r, echo=TRUE}
+set.seed(35)
+
+microbenchmark::microbenchmark(TSPsolve(jeuDeDonnees, method=methods[1]),TSPsolve(jeuDeDonnees, method=methods[2]), TSPsolve(jeuDeDonnees, method=methods[3]), TSPsolve(jeuDeDonnees, method=methods[4]), TSPsolve(jeuDeDonnees, method=methods[5]), times=20, setup={jeuDeDonnees <- distance(data.frame(x = runif(n), y = runif(n)))})
+```
+
+# 2. Etude de la complexité de l'algorithme Branch and Bound
+
+## 2.1. Comportement par rapport au nombre de sommets : premier modèle
+
+Récupération du temps sur 10 graphes pour différentes valeurs de $n$.
+
+Ajustement du modèle linéaire de $\log(temps)^2$ en fonction de $n$.
+
+Analyse de la validité du modèle :
+
+-   pertinence des coefficients et du modèle,
+
+-   étude des hypothèses sur les résidus.
+
+Dans un premier temps, nous considérons les graphes générés auparavant, c’est-à-dire,
+```{r, echo=TRUE}
+set.seed(35)
+sommets <- data.frame(x = runif(n), y = runif(n))
+couts <- distance(sommets)
+```
+
+Nous construisons un modèle de régression linéaire simple du temps d’exécution de Branch&Bound en fonction
+du nombre de sommets n.
+Introduisons
+
+```{r, echo=TRUE}
+set.seed(35)
+seqn <- seq(4,20,1)
+```
+• Construire la matrice temps telle que la ième ligne soit obtenue par :
+```{r, echo=TRUE}
+set.seed(35)
+temps  <- matrix(nrow = length(seqn), ncol=10)
+for (i in 1:17) {
+  temps[i,] = 
+  microbenchmark(TSPsolve(couts, method = 'branch'),
+  times = 10,
+  setup = { n <- seqn[i]
+  couts <- distance(cbind(x = runif(n), y = runif(n))) }
+  )$time
+}
+```
+
+```{r, echo=TRUE}
+set.seed(35)
+par(mfrow=c(1,2)) # 2 graphiques sur 1 ligne
+matplot(seqn, temps, xlab='n', ylab='temps')
+matplot(seqn, log(temps)^2, xlab='n', ylab=expression(log(temps)^2))
+```
+```{r, echo=TRUE}
+set.seed(35)
+vect_temps <- log(as.vector(temps))^2
+vect_dim <- rep(seqn, times=10)
+temps.lm <- lm(vect_temps ~ vect_dim)
+summary(temps.lm)
+```
+### Test de pertinence
+Ici, la p-valeur de l'hypothèse a=0 (ligne vect_dim) est extrêmement inférieure à 5%, ainsi, l'hypothèse que a=0 est rejetée avec une grande confiance. 
+
+### Etude du biais
+Ici, la p-valeur de l'hypothèse b=0 (ligne vect_dim) est extrêmement inférieure à 5%, ainsi, l'hypothèse est rejetée avec une grande confiance. 
+
+
+
+### Etude des résidus
+#### Test de normalité
+##### Etude graphique
+
+##### Tests
+
+#### Test d'espérance
+##### Etude graphique
+
+##### Tests
+
+#### Test de variance
+##### Etude graphique
+
+##### Tests
+
+#### Test d'indépendance
+##### Etude graphique
+
+##### Tests
+
+## 2.2. Comportement par rapport au nombre de sommets : étude du comportement moyen
+
+Récupération du temps moyen.
+
+Ajustement du modèle linéaire de $\log(temps.moy)^2$ en fonction de $n$.
+
+Analyse de la validité du modèle :
+
+-   pertinence des coefficients et du modèle,
+
+-   étude des hypothèses sur les résidus.
+
+## 2.3. Comportement par rapport à la structure du graphe
+
+Lecture du fichier 'DonneesTSP.csv'.
+
+```{r,echo=TRUE}
+donnees <- read.csv(file='DonneesTSP.csv',header=TRUE)
+str(donnees)
+```
+
+Ajustement du modèle linéaire de $\log(temps.moy)^2$ en fonction de toutes les
+variables présentes. Modèle sans constante.
+
+```{r,echo=TRUE}
+donnees$log.tps <- log(donnees$tps)#log(donnees$tps)^2
+donnees$sqrt.dim <- sqrt(donnees$dim)
+donnees$tps <- c() #on retire les variables tps et dim devenues inutiles
+donnees$dim <- c()
+str(donnees)
+```
+
+Mise en \oe uvre d'une sélection de variables pour ne garder que les variables
+pertinentes.
+
+Analyse de la validité du modèle :
+
+-   pertinence des coefficients et du modèle,
+
+-   étude des hypothèses sur les résidus.
