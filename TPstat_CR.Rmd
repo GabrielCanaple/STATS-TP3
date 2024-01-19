@@ -348,3 +348,11 @@ step(modele.complet)
 -   pertinence des coefficients et du modèle,
 
 -   étude des hypothèses sur les résidus.
+```{r}
+par(mfrow=c(1,2)) # 4 graphiques sur 2 lignes et 2 colonnes
+plot(modele.complet)
+```
+
+```{r}
+shapiro.test(residuals(modele.complet))
+```
