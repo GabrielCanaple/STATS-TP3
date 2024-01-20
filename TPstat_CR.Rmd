@@ -1,6 +1,6 @@
 ---
-title: "TP Statistique"
-author: "Gabriel Canaple"
+title: "TP Statistiques"
+author: "Gabriel CANAPLE, BOYER THOMAS, LECLUSE Martin, FAYALA Mohamed"
 date: "19 Janvier 2024"
 output: pdf_document
 editor_options: 
@@ -39,11 +39,17 @@ library(TSPpackage)
 set.seed(35)
 ```
 
-Voici le plan de ce qui sera fait dans le TP.
+# Introduction
 
-# 0. Visualisation de chemins
+L'objectif du TP est de comparer les performances d'algorithmes de calcul de circuit hamiltonien dans un graphe, selon les critères de longueur du chemin, et de temps d'exécution.
 
-Lecture du fichier des villes :
+Nos conclusions se basent tout au long du TP sur les méthodes statistiques aabordées en cours : test d'hypothèse, tests multiples, régression linéaire.
+
+Dans une première partie, nous montrerons une visualisation du problème résolu par les algorithmes, puis nous comparerons ces derniers sur le critère de la longueur du chemin hamiltonien trouvé, et ensuite sur le temps d'exécution. Enfin, nous essayerons de proposer une régression linéaire de la complexité de l'algorithme Branch & Bound.
+
+# 1. Visualisation de chemins
+
+Voici les données présentes dans le fichier "DonneesGPSvilles.csv" :
 
 ```{r, echo=TRUE}
 set.seed(35)
@@ -51,7 +57,7 @@ villes <- read.csv('DonneesGPSvilles.csv',header=TRUE,dec='.',sep=';',quote="\""
 str(villes)
 ```
 
-Représentation des chemins par plus proches voisins et du chemin optimal :
+Et voici comment nous visualisaons les résultats données par les algorithmes (ici, avec l'exemple de l'algorithme "nearest", comaré au chemin optimal fourni) :
 
 ```{r, echo=TRUE}
 set.seed(35)
@@ -62,12 +68,11 @@ voisins <- TSPnearest(dist)
 pathOpt <- c(1,8,9,4,21,13,7,10,3,17,16,20,6,19,15,18,11,5,22,14,12,2)
 
 par(mfrow=c(1,2),mar=c(1,1,2,1))
-plotTrace(coord[voisins$chemin,], title='Plus proches voisins')
+plotTrace(coord[voisins$chemin,], title='Nearest')
 plotTrace(coord[pathOpt,], title='Chemin optimal')
 ```
 
-Les longueurs des trajets (à vol d'oiseau) valent respectivement, pour la
-méthode des plus proches voisins :
+Le total de la longueurs des trajets (à vol d'oiseau) valent respectivement, pour la méthode des plus proches voisins :
 
 ```{r, echo=FALSE}
 set.seed(35)
@@ -81,83 +86,109 @@ set.seed(35)
 calculeLongueur(dist,pathOpt)
 ```
 
-Ceci illustre bien l'intérêt d'un algorithme de voyageur de commerce. Nous
-allons dans la suite étudier les performances de cet algorithme.
+On remarque que le résultat de l'algorithme est peu performant, avec de incohérences que l'on peut facilement voir sur la carte, et qui sont confirmées par le total de la longueur des chemins.
 
-# 1. Comparaison d'algorithmes
+Cela illustre l'intérêt de notre démarche : il faut pouvoir objectifier la performance des algorithmes pour les comparer entre eux, et sélectionner le meilleur (selon certains critères).
 
-Nombre de sommets fixes et graphes "identiques".
+C'est l'objet des parties suivantes.
+
+# 2. Comparaison d'algorithmes
+
+On fixe le nombre de somets du graphe à 10. Les coordonnées cartésiennes sont des lois uniformes sur [0,1] :
 
 ```{r, echo=TRUE}
 set.seed(35)
-n <- 10 #nombre de noeud
+n <- 10 #nombre de noeuds
 
-#example de lancement unitaire
+#exemple de lancement unitaire
 sommets <- data.frame(x = runif(n), y = runif(n))
 couts <- distance(sommets)
-TSPsolve(dist,'nearest')
+TSPsolve(dist,'nearest') #LE RESULTAT ICI ME PARAIT BIZARRE (4000 alors que ya que des coordonnées entre 0 et 1, on est surs qu'on l'appelle avec le bon jeu de données ?)
 ```
 
-```{r, echo=TRUE}
+On lance 50 simulations par algorithme, ce qui donne le résultat suivant (premières lignes uniquement) :
+```{r, echo=FALSE}
 set.seed(35)
 
-#calcul de plusieurs simulation de graphes qui seront analysées par les 5 méthodes
+#calcul de plusieurs simulations de graphes qui seront analysées par les 5 méthodes
 nsimu <- 50 #nombre de simu
 methods <- c('arbitrary_insertion', 'repetitive_nn','two_opt','nearest','branch')
 res <- array(0,dim=c(nsimu,length(methods)))
+
 for(i in 1:nsimu){
   points <- data.frame(x = runif(n), y = runif(n))
   dist <- distance(points)
   res[i,] <- (sapply(methods, function(m){TSPsolve(dist,m)}))
 }
+
 colnames(res) <- c('insertion','repet_nn','two_opt','nearest','branch')
-res
+res[1:5] #AFFICHER 5 PREMIERES LIGNES : A VERIFIER
 ```
 
-## 1.1. Longueur des chemins
+### 2.1. Longueur des chemins
 
-Comparaison des longueurs de différentes méthodes :
+On s'intéresse ici à la longueur des chemins retournée par chacun des méthodes. Notre but est de détermnier quel(s) algorithme(s) est le plus performant selon ce critère, c'est-à-dire renvoie une longueur la plus faible possible.
+Pour répondre à cette question, on visualisera d'abord les résultats, avant de mener des études plus approfondies, d'abord sur les algorithmes "nearest" et "branch & bound", puis entre tous les algortihmes 2 à 2.
 
--   boxplots
+### Observation des résultats
 
--   test entre 'nearest' et 'branch'
-
--   tests 2 à 2
-
+Voici d'abord une visualisation des résultats sous forme de boxplot :
 ```{r, echo=TRUE}
 set.seed(35)
 res2 <- as.vector(res)
 meth_names <- c('insertion','repetitive_nn','two_opt','nearest','branch')
 methods2 <- rep(meth_names,each=nsimu) 
 
-boxplot(res)
+boxplot(res,
+        main="Résultats des algorithmes de calcul de circuit hamiltonien",
+        xlab="Algorithmes",
+        ylab="Longueur des chemins")
+```
 
+On observe des différences entre les résultats des algorithmes. Celles-ci sont a priori assez failbes, puisque les espaces interquartiles se chevauchent tous (cela est sûrement du aux petits écrats entre les coordonnées). La moyenne de la longuer des chemins est comprise entre 2.8 et 3.0 pour tous.
+Il semble tout de même que "insertion", "repet_nn" et "branch" aient des résultats très similaires, alors que "two_opt" et "nearest" se démarquent du reste, avec des résultats un peu plus élevés.
+Au sujet de la variance, on observe que "repet_nn" semble avoir une valeur faible, avec des résultats des 1er et 9e déciles plus proche de la moyenne que pour les autres algorithmes. "nearest", "insertion, "two_opt" au contraire paraissent avoir une variance plus élevée. Concernant "branch", la dispersion des valeurs semblent surtout être vraie pour lse valeurs faibles : le 9e décile est assez peu supérieur à la moyenne, alors que le 1er décile y est très inférieur.
+
+### Test de normalité
+
+Afin de vérifier si l'on peut faire des tests de Student avec les résultats obtenus, nous vérifions qu'il satisfont tous l'hypothèse de normalité avec un test de Shapiro :
+
+``` {r echo = TRUE}
 shapiro.test(res[,1])
 shapiro.test(res[,2])
 shapiro.test(res[,3])
 shapiro.test(res[,4])
 shapiro.test(res[,5])
-
-nearest_branch <- res[,4] - res[,5]
-shapiro.test(nearest_branch) #ne suit pas une loi normale
-t.test(res[,4], res[,5], alternative = "greater")
-
-result <- pairwise.t.test(res2,methods2, p.adjust.method = "bonferroni")
 ```
 
-### Analyse des boxplots
-On observe qu'il n'y a pas de différence significative entre les algorithmes. Ils ont une moyenne proche, même si on remarque two_opt et nearest ont des valeurs globalement plus élevées que les trois autres, qui sont, eux, plus proches de 3.0 en valeur.
-two_opt se distingue aussi par une disperion plus faible que celle des quatre autres.
+Avec un seuil de risque à 5%, on ne rejette pas l'hypothèse de normalité pour toutes les distributions. On peut donc faire des tests de Student sur ces résultats.
 
-### Test de normalité
-Avec un seuil de 5%, on ne rejette pas l'hypothèse nulle pour les tests de Shapiro-Wilk (qui est que la distribution suit une loi normale), donc les distributions pour nearest et branch suivent une loi normale.
+### Comparaison de "nearest" et de "branch & bound"
 
-### Comparaison de nearest et de branch and bound
-Nous effectuons une soustraction afin de limiter l'incertitude. Nous pouvons le faire car nos deux algorithmes ont été exécutés sur des échantillons appariés.
-Nous prenons comme risque $\alpha$ le seuil à 5%.
-La p-valeur obtenue pour l'hypothèse que la différence est inférieure à 0 est égale à 0.008\%, nous rejetons donc l'hypothèse H0, et nous pouvons donc en conclure que la différence est significativement supérieure à 0. La p-valeur étant très inférieure à notre risque, nous pouvons être assez confiants dans notre conclusion.
+Notre premier objectif est de comparer les performances de "nearest" et de "branch & bound". En effet, ce sont les algorithmes qui ont a priori le plus de chances d'être significativement différents (cf boxplot).
 
-### Test deux à deux
+On cherche à savoir si "nearest" est significativement moins performant que "branch & bound", donc on pose les hypothèse suivantes $H(0) : m_n - m_bb <= 0$ et $H(1) : m_n-m_bb > 0$. De cette manière, on contrôle le risque de conclure que "nearest" est meilleur que "branch & bound" alors que ce n'est pas le cas. A noter que, ici, l'algorithme le plus performant trouve une longueur plus faible.
+
+Pour ce test, on prend un seuil de risque de 5%.
+
+Précisons également que la soustraction $m_n _ m_bb$ est faite car nous avons ici des calculs faits sur le même échantillon, et qu'elle nous peremt de limiter les incertitudes : en effet, on construit une troisième gaussienne (la différence des deux premières), que l'on compare à une valeur constante, plutôt que de comparer deux gaussiennes entre elles.
+
+```{r echo=TRUE}
+nearest_branch <- res[,4] - res[,5]
+t.test(res[,4], res[,5], alternative = "greater")
+```
+
+Avec une p-valeur de 0.00005%, on conclut qu'on rejette l'hypothèse nulle, et que $m_n$ est significativement moins performant que $m_bb$. De plus, la très faible p-valeur nous donne une grande confiance dans ce résultat.
+
+### Tests deux à deux
+
+L'objectif de cette analyse est de déterminer si l'on peut regrouper les différents algorithmes par performance sur le critère de longueur des chemins trouvés. Cela permettra de présenter les résultats sous une forme plus intelligible, et éventuellement de faire plus tard des choix entre les algorithmes pus facilement (en prenant d'autres critères comme le temps d'exécution par exemple).
+
+```{r echo=TRUE}
+result <- pairwise.t.test(res2,methods2, p.adjust.method = "bonferroni")
+result
+```
+
 Nous prenons un risque $\alpha$ égal à 5%.
 La seule différence notable est entre nearest et branch, avec une p-valeur inférieure à 5%.
 Nous avons choisi de répartir les algorithmes entre 4 groupes :
@@ -167,18 +198,13 @@ Nous avons choisi de répartir les algorithmes entre 4 groupes :
 - Le quatrième groupe contient branch and bound
 La philosophie de cette répartition est de rassembler les algorithmes similaires entre eux, et ayant des différences avec les même algorithmes. A compléter.
 
-## 1.2. Temps de calcul
+## 2.2. Temps de calcul
 
-Comparaison des temps à l'aide du package microbenchmark.
+Après avoir étudié les performances des algorithmes selon la longueur des chemins trouvés, nous étudions les performances en termes de temps de calcul.
 
-Exemple d'application de microbenchmark :
+On exécute les algorithmes 20 fois, les coordonnées des points sont comme précédemment générés par une lois uniforme sur [0,1].
 
-```{r, echo=TRUE}
-set.seed(35)
-microbenchmark(sqrt(x),x^0.5, times=100, setup={x <- runif(1)})
-```
-
-Exemple d'application de la fonction TSPsolve :
+On utilise pour cela le package "microbenchmark" :
 
 ```{r, echo=TRUE}
 set.seed(35)
@@ -186,21 +212,22 @@ set.seed(35)
 microbenchmark::microbenchmark(TSPsolve(jeuDeDonnees, method=methods[1]),TSPsolve(jeuDeDonnees, method=methods[2]), TSPsolve(jeuDeDonnees, method=methods[3]), TSPsolve(jeuDeDonnees, method=methods[4]), TSPsolve(jeuDeDonnees, method=methods[5]), times=20, setup={jeuDeDonnees <- distance(data.frame(x = runif(n), y = runif(n)))})
 ```
 
+Les lignes correspondent dans l'ordre à : "insertion", "repet_nn", "two_opt", "nearest" et "branch".
+
+Les résultat permettent de séparer les algorithmes en 2 classe :
+ - "insertion", "two_opt" et "nearest" : exécution plus rapide, avec une moyenne comprise entre 7 et 260 microsecondes
+ - "repet_nn" et "branch & bound" : exécution plus lente, avec une moyenne supérieur à 2200 microsecondes
+ 
+Si l'on compare avec les résultats de la partie précédente, et la longuer des chemins, on
+
 # 2. Etude de la complexité de l'algorithme Branch and Bound
+
+Dans cette partie, on étudie la complexité de Branch & Bound, en étudiant le temps d'exécution en fonction de la taille du graphe.
 
 ## 2.1. Comportement par rapport au nombre de sommets : premier modèle
 
-Récupération du temps sur 10 graphes pour différentes valeurs de $n$.
+On crée à chaque fois 10 graphes, pour des valeurs de $n$ entre 4 et 20 inclus. Comme précédemment, on généère les coordonnées des points avec une loi uniforme sur [0,1] :
 
-Ajustement du modèle linéaire de $\log(temps)^2$ en fonction de $n$.
-
-Analyse de la validité du modèle :
-
--   pertinence des coefficients et du modèle,
-
--   étude des hypothèses sur les résidus.
-
-Dans un premier temps, nous considérons les graphes générés auparavant, c’est-à-dire,
 ```{r, echo=TRUE}
 set.seed(35)
 sommets <- data.frame(x = runif(n), y = runif(n))
@@ -215,7 +242,9 @@ Introduisons
 set.seed(35)
 seqn <- seq(4,20,1)
 ```
-• Construire la matrice temps telle que la ième ligne soit obtenue par :
+
+On construit la matrice des résultats :
+
 ```{r, echo=TRUE}
 set.seed(35)
 temps  <- matrix(nrow = length(seqn), ncol=10)
@@ -229,6 +258,8 @@ for (i in 1:17) {
 }
 ```
 
+Et on affiche les résultats sur un graphe. Les premiers résultats nous laissant penser à une relations de forme $exp(n/2)$, on affiche aussi $\log(temps)^2$ :
+
 ```{r, echo=TRUE}
 set.seed(35)
 par(mfrow=c(1,2)) # 2 graphiques sur 1 ligne
@@ -236,6 +267,9 @@ matplot(seqn, temps, xlab='n', ylab='temps')
 matplot(seqn, log(temps)^2, xlab='n', ylab=expression(log(temps)^2))
 ```
 
+L'observation des résultats nous permet de suspecter une relation linéaire, même si le deuxième graphe montre une relation qui semble légèrement logarithmique.
+
+On crée le modèle de régression linéaire de $\log(temps)^2$ en fonction de $n$ :
 ```{r, echo=TRUE}
 set.seed(35)
 vect_temps <- log(as.vector(temps))^2
@@ -243,21 +277,23 @@ vect_dim <- rep(seqn, times=10)
 temps.lm <- lm(vect_temps ~ vect_dim)
 summary(temps.lm)
 ```
+
 ### Test de pertinence
-Ici, la p-valeur de l'hypothèse a=0 (ligne vect_dim) est extrêmement inférieure à 5%, ainsi, l'hypothèse que a=0 est rejetée avec une grande confiance. 
+Ici, la p-valeur de l'hypothèse $a=0$ (ligne vect_dim) est extrêmement inférieure à 5%, ainsi, l'hypothèse $a=0$ est rejetée avec une grande confiance. Le modèle linéaire est pertinent.
 
 ### Etude du biais
-Ici, la p-valeur de l'hypothèse b=0 (ligne vect_dim) est extrêmement inférieure à 5%, ainsi, l'hypothèse est rejetée avec une grande confiance. 
-
-
+Ici, la p-valeur de l'hypothèse $b=0$ (ligne vect_dim) est extrêmement inférieure à 5%, ainsi, l'hypothèse $b=0$ est rejetée avec une grande confiance : il y a un biais dans la relation.
 
 ### Etude des résidus
 #### Test de normalité
 
+Comme précédemment, le test de normalité est per le test de Shapiro, avec un seuil de risque de 5% :
 ```{r}
 shapiro.test(residuals(temps.lm))
 ```
-On obtient une pvalue = 0.37 > 5%. Les résidus suivent donc une loi normale
+
+On obtient une p-valeur = 0.37 > 5%. On ne rejette pas l'hypothèse de normalité : les résidus suivent une loi normale.
+
 ##### Etude graphique
 ```{r}
 par(mfrow=c(1,2)) # 4 graphiques sur 2 lignes et 2 colonnes
