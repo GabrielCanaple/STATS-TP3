@@ -354,26 +354,41 @@ shapiro.test(residuals(temps.moy.lm))
 Lecture du fichier 'DonneesTSP.csv'.
 
 ```{r,echo=TRUE}
-donnees <- read.csv(file='DonneesTSP.csv',header=TRUE)
-str(donnees)
+data.graph <- read.csv(file='DonneesTSP.csv',header=TRUE)
+str(data.graph)
 ```
 
 Ajustement du modèle linéaire de $\log(temps.moy)^2$ en fonction de toutes les
 variables présentes. Modèle sans constante.
 
 ```{r,echo=TRUE}
-donnees$log.tps <- log(donnees$tps)#log(donnees$tps)^2
-donnees$sqrt.dim <- sqrt(donnees$dim)
-donnees$tps <- c() #on retire les variables tps et dim devenues inutiles
-donnees$dim <- c()
-str(donnees)
+data.graph$log.tps <- log(data.graph$tps)#log(donnees$tps)^2
+data.graph$sqrt.dim <- sqrt(data.graph$dim)
+data.graph$tps <- c() #on retire les variables tps et dim devenues inutiles
+data.graph$dim <- c()
+str(data.graph)
+```
+
+```{r}
+
+modele.complet = lm(data.graph$log.tps~., data = data.graph)
 ```
 
 Mise en \oe uvre d'une sélection de variables pour ne garder que les variables
 pertinentes.
 
 Analyse de la validité du modèle :
-
+```{r}
+step(modele.complet)
+```
 -   pertinence des coefficients et du modèle,
 
 -   étude des hypothèses sur les résidus.
+```{r}
+par(mfrow=c(1,2)) # 4 graphiques sur 2 lignes et 2 colonnes
+plot(modele.complet)
+```
+
+```{r}
+shapiro.test(residuals(modele.complet))
+```
