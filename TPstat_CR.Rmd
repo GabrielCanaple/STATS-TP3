@@ -45,7 +45,7 @@ set.seed(35)
 
 L'objectif du TP est de comparer les performances d'algorithmes de calcul de circuit hamiltonien dans un graphe, selon les critères de longueur du chemin, et de temps d'exécution.
 
-Nos conclusions se basent tout au long du TP sur les méthodes statistiques aabordées en cours : test d'hypothèse, tests multiples, régression linéaire.
+Nos conclusions se basent tout au long du TP sur les méthodes statistiques abordées en cours : test d'hypothèse, tests multiples, régression linéaire.
 
 Dans une première partie, nous montrerons une visualisation du problème résolu par les algorithmes, puis nous comparerons ces derniers sur le critère de la longueur du chemin hamiltonien trouvé, et ensuite sur le temps d'exécution. Enfin, nous essayerons de proposer une régression linéaire de la complexité de l'algorithme Branch & Bound.
 
@@ -59,7 +59,7 @@ villes <- read.csv('DonneesGPSvilles.csv',header=TRUE,dec='.',sep=';',quote="\""
 str(villes)
 ```
 
-Et voici comment nous visualisaons les résultats données par les algorithmes (ici, avec l'exemple de l'algorithme "nearest", comaré au chemin optimal fourni) :
+Et voici comment nous visualisons les résultats données par les algorithmes (ici, avec l'exemple de l'algorithme "nearest", comparé au chemin optimal fourni) :
 
 ```{r, echo=TRUE}
 set.seed(35)
@@ -74,7 +74,7 @@ plotTrace(coord[voisins$chemin,], title='Nearest')
 plotTrace(coord[pathOpt,], title='Chemin optimal')
 ```
 
-Le total de la longueurs des trajets (à vol d'oiseau) valent respectivement, pour la méthode des plus proches voisins :
+Le total de la longueurs des trajets (à vol d'oiseau) vaut respectivement, pour la méthode des plus proches voisins :
 
 ```{r, echo=FALSE}
 set.seed(35)
@@ -96,7 +96,7 @@ C'est l'objet des parties suivantes.
 
 # 2. Comparaison d'algorithmes
 
-On fixe le nombre de somets du graphe à 10. Les coordonnées cartésiennes sont des lois uniformes sur [0,1] :
+On fixe le nombre de sommets du graphe à 10. Les coordonnées cartésiennes suivent des lois uniformes sur [0,1] :
 
 ```{r, echo=TRUE}
 set.seed(35)
@@ -124,12 +124,13 @@ for(i in 1:nsimu){
 }
 
 colnames(res) <- c('insertion','repet_nn','two_opt','nearest','branch')
-res[1:5] #AFFICHER 5 PREMIERES LIGNES : A VERIFIER
+res[,1:5] #AFFICHER 5 PREMIERES LIGNES : A VERIFIER
 ```
 
 ### 2.1. Longueur des chemins
 
-On s'intéresse ici à la longueur des chemins retournée par chacun des méthodes. Notre but est de détermnier quel(s) algorithme(s) est le plus performant selon ce critère, c'est-à-dire renvoie une longueur la plus faible possible.
+On s'intéresse ici à la longueur des chemins retournée par chacune des méthodes. Notre but est de détermnier quel algorithme est le plus performant selon ce critère, c'est-à-dire renvoie une longueur la plus faible possible.
+
 Pour répondre à cette question, on visualisera d'abord les résultats, avant de mener des études plus approfondies, d'abord sur les algorithmes "nearest" et "branch & bound", puis entre tous les algortihmes 2 à 2.
 
 ### Observation des résultats
@@ -147,9 +148,11 @@ boxplot(res,
         ylab="Longueur des chemins")
 ```
 
-On observe des différences entre les résultats des algorithmes. Celles-ci sont a priori assez failbes, puisque les espaces interquartiles se chevauchent tous (cela est sûrement du aux petits écrats entre les coordonnées). La moyenne de la longuer des chemins est comprise entre 2.8 et 3.0 pour tous.
-Il semble tout de même que "insertion", "repet_nn" et "branch" aient des résultats très similaires, alors que "two_opt" et "nearest" se démarquent du reste, avec des résultats un peu plus élevés.
-Au sujet de la variance, on observe que "repet_nn" semble avoir une valeur faible, avec des résultats des 1er et 9e déciles plus proche de la moyenne que pour les autres algorithmes. "nearest", "insertion, "two_opt" au contraire paraissent avoir une variance plus élevée. Concernant "branch", la dispersion des valeurs semblent surtout être vraie pour lse valeurs faibles : le 9e décile est assez peu supérieur à la moyenne, alors que le 1er décile y est très inférieur.
+On observe des différences entre les résultats des algorithmes. Celles-ci sont a priori assez faibles, puisque les espaces interquartiles se chevauchent tous (cela est sûrement du aux petits écrats entre les coordonnées). La moyenne de la longueur des chemins est comprise entre 2.8 et 3.0 pour tous.
+
+Il semble tout de même que "insertion", "repet_nn" et "branch" aient des résultats très similaires et bas, alors que "two_opt" et "nearest" se démarquent du reste, avec des résultats plus élevés.
+
+Au sujet de la variance, on observe que "repet_nn" semble avoir une valeur faible, avec des résultats des 1er et 9e déciles plus proche de la moyenne que pour les autres algorithmes. "nearest", "insertion, "two_opt" au contraire paraissent avoir une variance plus élevée. Concernant "branch", la dispersion des valeurs semble surtout être forte pour les valeurs faibles : le 9e décile est assez peu supérieur à la moyenne, alors que le 1er décile y est très inférieur.
 
 ### Test de normalité
 
@@ -163,42 +166,45 @@ shapiro.test(res[,4])
 shapiro.test(res[,5])
 ```
 
-Avec un seuil de risque à 5%, on ne rejette pas l'hypothèse de normalité pour toutes les distributions. On peut donc faire des tests de Student sur ces résultats.
+Avec un seuil de risque à 5%, on ne rejette pas l'hypothèse de normalité pour toutes les distributions sauf "two_opt". Pour cette dernière, on considère malgré tout qu'on peut la considérer comme une distribution normale, car la p-valeur reste proche de 5%. On peut donc faire des tests de Student sur ces résultats.
 
 ### Comparaison de "nearest" et de "branch & bound"
 
 Notre premier objectif est de comparer les performances de "nearest" et de "branch & bound". En effet, ce sont les algorithmes qui ont a priori le plus de chances d'être significativement différents (cf boxplot).
 
-On cherche à savoir si "nearest" est significativement moins performant que "branch & bound", donc on pose les hypothèse suivantes $H(0) : m_n - m_bb <= 0$ et $H(1) : m_n-m_bb > 0$. De cette manière, on contrôle le risque de conclure que "nearest" est meilleur que "branch & bound" alors que ce n'est pas le cas. A noter que, ici, l'algorithme le plus performant trouve une longueur plus faible.
+On cherche à savoir si "nearest" est significativement moins performant que "branch & bound", donc on pose les hypothèse suivantes $H(0) : m_n - m_b <= 0$ et $H(1) : m_n-m_b > 0$. De cette manière, on contrôle le risque de conclure que "nearest" est meilleur que "branch & bound" alors que ce n'est pas le cas. A noter que, ici, l'algorithme le plus performant trouve une longueur plus faible.
 
 Pour ce test, on prend un seuil de risque de 5%.
 
-Précisons également que la soustraction $m_n _ m_bb$ est faite car nous avons ici des calculs faits sur le même échantillon, et qu'elle nous peremt de limiter les incertitudes : en effet, on construit une troisième gaussienne (la différence des deux premières), que l'on compare à une valeur constante, plutôt que de comparer deux gaussiennes entre elles.
+Précisons également que nous faisons la soustraction $m_n - m_b$ car nous avons ici des calculs faits sur le même échantillon, et qu'elle nous permet de limiter les incertitudes : en effet, on construit une troisième gaussienne (la différence des deux premières), que l'on compare à une valeur constante, plutôt que de comparer deux gaussiennes entre elles.
 
 ```{r echo=TRUE}
 nearest_branch <- res[,4] - res[,5]
 t.test(res[,4], res[,5], alternative = "greater")
 ```
 
-Avec une p-valeur de 0.00005%, on conclut qu'on rejette l'hypothèse nulle, et que $m_n$ est significativement moins performant que $m_bb$. De plus, la très faible p-valeur nous donne une grande confiance dans ce résultat.
+Avec une p-valeur de 0.005%, on conclut qu'on rejette l'hypothèse nulle, et que $m_n$ est significativement moins performant que $m_b$. De plus, la très faible p-valeur nous donne une grande confiance dans ce résultat.
 
 ### Tests deux à deux
 
 L'objectif de cette analyse est de déterminer si l'on peut regrouper les différents algorithmes par performance sur le critère de longueur des chemins trouvés. Cela permettra de présenter les résultats sous une forme plus intelligible, et éventuellement de faire plus tard des choix entre les algorithmes pus facilement (en prenant d'autres critères comme le temps d'exécution par exemple).
+
+Ici, on teste $H(0) : m_i = m_j$ contre $H(1) : m_i != m_j$ pour tous les algorithmes 2 à 2. On prend un seuil de risque de 5%.
+
+L'ajustement du seuil de risque pour les test multiples se fait avec la méthode Bonferroni.
 
 ```{r echo=TRUE}
 result <- pairwise.t.test(res2,methods2, p.adjust.method = "bonferroni")
 result
 ```
 
-Nous prenons un risque $\alpha$ égal à 5%.
-La seule différence notable est entre nearest et branch, avec une p-valeur inférieure à 5%.
-Nous avons choisi de répartir les algorithmes entre 4 groupes :
-- Le premier groupe est composé d'insertion, et de repetitive-nn.
-- Le deuxième groupe se constitue de nearest.
-- Le troisième groupe contient two-opt.
-- Le quatrième groupe contient branch and bound
-La philosophie de cette répartition est de rassembler les algorithmes similaires entre eux, et ayant des différences avec les même algorithmes. A compléter.
+Les deux seuls résultats significatifs sont obtenus lorsqu'on fait le test sur "branch & bound" et "nearest"/"two_opt". Les p-valeurs de respectivement 0.05% et 0.4% nous permettent de rejetter l'hypothèse d'agalité des résultats entre les algorithmes avec confiance.
+
+Pour le reste des tests, aucune différence significative n'émerge. Cela nous pose a priori un problème : on cherche à séparer les algorithmes en différentes classes, selon les différences significatives de résultat. Cependant, étant donné que les test multiples nous donnent la p-valeur de chaque test, on peut se satisfaire de faire le classement en comparant les p-valeur. On cherche spécialement à faire des classes telles que les algorithmes au sein de chaque classe aient des résultats similaires, mais qu'ils aient des résultat différents de ceux des algorithmes des autres classes.
+
+On décide donc de regrouper "branch & bound", "repetitive_nn", et "insertion" dans la même classe : p-valeurs normalisées de 100% lors des tests entre ces trois algorithmes, et de maximum 32% lors des tests avec les deux autres algorithmes. Pour les mêmes raisons, on regroupe "nearest" et "two_opt" dans une seconde classe.
+
+Pour lever le problème que pose l'absence de p-valeurs significativement faibles lors de ces tests, et ainsi améliorer la confiance que l'on a dans ce classement, on pourrait imaginer faire plus de tests, ou bien prendre des graphes avec des coordonnées plus éloignées.
 
 ## 2.2. Temps de calcul
 
@@ -216,8 +222,10 @@ microbenchmark::microbenchmark(TSPsolve(jeuDeDonnees, method=methods[1]),TSPsolv
 
 Les lignes correspondent dans l'ordre à : "insertion", "repet_nn", "two_opt", "nearest" et "branch".
 
-Les résultat permettent de séparer les algorithmes en 2 classe :
+Les résultat permettent de séparer les algorithmes en 2 classes :
+
  - "insertion", "two_opt" et "nearest" : exécution plus rapide, avec une moyenne comprise entre 7 et 260 microsecondes
+ 
  - "repet_nn" et "branch & bound" : exécution plus lente, avec une moyenne supérieur à 2200 microsecondes
  
 Si l'on compare avec les résultats de la partie précédente, et la longuer des chemins, on
@@ -228,15 +236,7 @@ Dans cette partie, on étudie la complexité de Branch & Bound, en étudiant le 
 
 ## 2.1. Comportement par rapport au nombre de sommets : premier modèle
 
-On crée à chaque fois 10 graphes, pour des valeurs de $n$ entre 4 et 20 inclus. Comme précédemment, on généère les coordonnées des points avec une loi uniforme sur [0,1] :
-
-```{r, echo=TRUE}
-set.seed(35)
-sommets <- data.frame(x = runif(n), y = runif(n))
-couts <- distance(sommets)
-```
-
-Nous construisons un modèle de régression linéaire simple du temps d’exécution de Branch&Bound en fonction
+On crée à chaque fois 10 graphes, pour des valeurs de $n$ entre 4 et 20 inclus. Comme précédemment, on généère les coordonnées des points avec une loi uniforme sur [0,1]. Nous construisons un modèle de régression linéaire simple du temps d’exécution de Branch&Bound en fonction
 du nombre de sommets n.
 Introduisons
 
@@ -301,9 +301,12 @@ On obtient une p-valeur = 0.37 > 5%. On ne rejette pas l'hypothèse de normalit�
 par(mfrow=c(1,2)) # 4 graphiques sur 2 lignes et 2 colonnes
 plot(temps.lm)
 ```
-Résiduals vs Fitted : la courbe n'est ni horizontale ni homogène. 
-Normal Q-Q : L'ensemble des points sont sur la diagonale avec quelques exceptions (points 135 et 46). On peut en désuire que les résidus suivent une loi normale  
+Résiduals vs Fitted : la courbe n'est ni horizontale ni homogène.
+
+Normal Q-Q : l'ensemble des points sont sur la diagonale avec quelques exceptions (points 135 et 160). On peut en déduire que les résidus suivent une loi normale
+
 Scale location : courbe moins concave que Résiduals vs Fitted mais toujour pas horizontale
+
 Residuals vs Leverage : les points sont éloignés de la distance de Cook = 1
 
 ##### Tests
@@ -323,9 +326,7 @@ Residuals vs Leverage : les points sont éloignés de la distance de Cook = 1
 
 ## 2.2. Comportement par rapport au nombre de sommets : étude du comportement moyen
 
-Récupération du temps moyen.
-
-Ajustement du modèle linéaire de $\log(temps.moy)^2$ en fonction de $n$.
+Récupération du temps moyen et ajustement du modèle linéaire de $\log(temps.moy)^2$ en fonction de $n$.
 ```{r}
 temps.moy <- rowMeans(temps)
 matplot(seqn, log(temps.moy)^2, xlab='n', ylab=expression(log(temps.moy)^2))
@@ -341,15 +342,30 @@ vect_dim_moy <- rep(seqn)
 temps.moy.lm <- lm(vect_dim_moy ~ vect_moy)
 summary(temps.moy.lm)
 ```
+
+Comme dans le modèle précédent, les p-valeurs des tests d'hypothèse $a=0$ et $b=0$ sont inférieurs à 5%. On considère donc que ces hypothèses peuvent être rejetées et qu'un modèle linéaire est pertinent. On peut néanmoins remarquer que la p-valeur est sensiblement plus haute que dans le test précédent avec toutes les valeurs, surtout pour le test sur la nullité du biais.
+
 -   étude des hypothèses sur les résidus.
 ```{r}
 par(mfrow=c(1,2)) # 4 graphiques sur 2 lignes et 2 colonnes
 plot(temps.moy.lm)
 ```
 
+Résiduals vs Fitted : la courbe n'est ni horizontale ni homogène.
+
+Normal Q-Q : les points suivent globalement la diagonale, sauf les points 1, 7 et 17. On garde confiance dans le fait que les résidus suivent une loi normale
+
+Scale location : courbe moins concave que Résiduals vs Fitted mais toujour pas horizontale
+
+Residuals vs Leverage : les points sont éloignés de la courbe de distance 1, mais un point (n°1) la franchit.
+
 ```{r}
 shapiro.test(residuals(temps.moy.lm))
 ```
+
+Avec une p-valeur de 26% et un seuil de risque de 5%, on ne rejette pas l'hypothèse de normalité.
+
+En conclusion, on considère que notre modèle de régression est pertinent pour ce modèle. Cependant, on sent bien que le fait d'avoir réduit le nombre de points affaiblit un peu la confiance que l'on a dans ce dernier. Il semble donc qu'il y ait à faire un arbitrage entre confiance dans le modèle et temps de calcul : dans notre cas, ces derniers sont rapides, mais sur d'autres jeu de données (plus volumineux, avec plus de dimensions) on peut imaginer que cette préoccupation devienne importante.
 
 ## 2.3. Comportement par rapport à la structure du graphe
 
