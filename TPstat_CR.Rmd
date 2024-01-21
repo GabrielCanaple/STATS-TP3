@@ -2,9 +2,11 @@
 title: "TP Statistiques"
 author: "Gabriel CANAPLE, BOYER THOMAS, LECLUSE Martin, FAYALA Mohamed"
 date: "19 Janvier 2024"
-output: pdf_document
-editor_options: 
-  markdown: 
+output:
+  html_document:
+    df_print: paged
+editor_options:
+  markdown:
     wrap: 80
 ---
 
