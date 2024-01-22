@@ -228,7 +228,7 @@ Les résultat permettent de séparer les algorithmes en 2 classes :
  
  - "repet_nn" et "branch & bound" : exécution plus lente, avec une moyenne supérieur à 2200 microsecondes
  
-Si l'on compare avec les résultats de la partie précédente, et la longuer des chemins, on
+Si l'on compare avec les résultats de la partie précédente, on voit que "insertion" est à la fois rapide et performant. Cela montre l'intérêt de construire de telles classes, puisqu'on peut arriver rapidement à évaluer les algorithmes avec confiance selon certains critères (pour prendre une décision ultérieurement).
 
 # 2. Etude de la complexité de l'algorithme Branch and Bound
 
@@ -309,20 +309,6 @@ Scale location : courbe moins concave que Résiduals vs Fitted mais toujour pas 
 
 Residuals vs Leverage : les points sont éloignés de la distance de Cook = 1
 
-##### Tests
-
-#### Test d'espérance
-##### Etude graphique
-
-##### Tests
-
-#### Test de variance
-##### Etude graphique
-
-##### Tests
-
-#### Test d'indépendance
-##### Etude graphique
 
 ## 2.2. Comportement par rapport au nombre de sommets : étude du comportement moyen
 
