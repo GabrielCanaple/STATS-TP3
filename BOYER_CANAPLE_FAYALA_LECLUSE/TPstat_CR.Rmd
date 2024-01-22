@@ -229,7 +229,7 @@ Les résultat permettent de séparer les algorithmes en 2 classes :
  
  - "repet_nn" et "branch & bound" : exécution plus lente, avec une moyenne supérieur à 2200 microsecondes
  
-Si l'on compare avec les résultats de la partie précédente, on voit que "insertion" est à la fois rapide et performant. Cela montre l'intérêt de construire de telles classes, puisqu'on peut arriver rapidement à évaluer les algorithmes avec confiance selon certains critères (pour prendre une décision ultérieurement).
+Si l'on compare avec les résultats de la partie précédente, et la longuer des chemins, on
 
 # 3. Etude de la complexité de l'algorithme Branch and Bound
 
