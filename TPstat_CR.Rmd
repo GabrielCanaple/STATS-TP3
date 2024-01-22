@@ -388,20 +388,31 @@ str(data.graph)
 ```
 
 ```{r}
-
 modele.complet = lm(data.graph$log.tps~., data = data.graph)
+summary(modele.complet)
 ```
 
-Mise en \oe uvre d'une sélection de variables pour ne garder que les variables
-pertinentes.
+Comme précédemment, on s'intéresse à la dernière colonne Pr(>|t|), qui donne la p-valeur du test d'hypothèse $H(0) : var=0$. On prend ici aussi un seuil de risque de 5%.
 
-Analyse de la validité du modèle :
+Avec ce test, on trouve que les résultats pour "mean.dist", "sd.deg" et "diameter" ne permettent pas de rejeter H0. Il semble donc que ces variables ne soient pas pertinentes pour notre modèle.
+
+Toutes les autres variables : biais, "mean.long", "sd.dist", "mean.deg", et "sqrt.dim" sont pertinentes.
+
+
+On utilise la fonction step pour faire une sélection de variables :
+
 ```{r}
 step(modele.complet)
 ```
--   pertinence des coefficients et du modèle,
 
--   étude des hypothèses sur les résidus.
+On remarque que seule la variable "diameter" a été exclue du modèle. C'était en effet une variable que nous avions identifiée comme non pertinente dans le modèle, mais les variables "mean.dist" et "sd.deg" l'étaient également, et sont conservées. Cependant, il est vrai que pour ces deux dernières valeurs, la p-valeur était moins élevée que pour "diameter".
+
+Etant donné que la sélection de variables modifie la valeur des coefficients, et que ces variables étaient "proches" d'être pertinentes, il est possible qu'une valeur modifiée et proche soit pertinente.
+
+Le test de Fisher donnait une p-valeur < 2.2e-16 : le modèle dans son ensemble est validé.
+
+On pass ensuite à l'étude des résidus :
+
 ```{r}
 par(mfrow=c(1,2)) # 4 graphiques sur 2 lignes et 2 colonnes
 plot(modele.complet)
@@ -410,3 +421,11 @@ plot(modele.complet)
 ```{r}
 shapiro.test(residuals(modele.complet))
 ```
+
+Pour les mêmes raisons que précédemment, on considère que les résidus suivent une loi normale.
+
+Cela nous permet de conclure à la validité de notre modèle.
+
+# Conclusion
+
+En conclusion, ce TP nous a permis d'utiliser les outils de statistiques vus en cours et en TD. Nous avons pu étudier en détail les tests à faire lorsque l'on veut étudier un phénomène statistique, et l'étude des paramètres de ces tests, pour avoir une confiance maximale dans nos résultats.
